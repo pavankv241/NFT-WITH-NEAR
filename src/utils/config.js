@@ -3,6 +3,7 @@ const config = {
     // The contract's address on the Ethereum network
     SEPOLIA_CONTRACT_ADDRESS: "0xc9D44f0F772E9c7BB23fBDF222aA3E6Cd6759b15",
     BNB_CONTRACT_ADDRESS: "0xeD9279915853cF66CfB22B2ab53Bd244e03c6a61",
+    SEI_CONTRACT : "0x3557CC57bFeC1Ba4B7119e5589712A6e3B9A3DC7",
   
     // The ABI for the contract
     ABI: [

@@ -2,40 +2,6 @@ import React, { useEffect, useState } from "react";
 //import { priceService } from "../utils/fetchPrices";
 
 export default function PictureGallery({ pictures, addToCart }) {
-/*
-  const [trxPrice, setTrxPrice] = useState(null);
-
-  useEffect(() => {
-
-    const getPrice = async () => {
-
-      try {
-        const [trx] = await priceService.getTokenPrice(['TRX']);
-        setTrxPrice(trx.price);
-      }catch(err){
-        console.log("Failed to Fetch TRX price:", err)
-      }
-    }
-
-    getPrice();
-
-
-  }, []);
-
-  const convertETHToTrx = (ethAmount) => {
-
-    const ETH_PRICE = 3200;
-
-    if(!trxPrice) return "...";
-
-    const ethUsd = ethAmount * ETH_PRICE;
-
-    const trxEquivalent = ethUsd / trxPrice;
-
-    return trxEquivalent.toFixed(2);
-  }
-    */
-
 
   if (pictures.length === 0) {
     return (
@@ -56,9 +22,9 @@ export default function PictureGallery({ pictures, addToCart }) {
           />
           <div className="text-center font-bold">{pic.name}</div>
           <div className="flex flex-col items-center space-y-1">
-            <span className="text-lg font-semibold">Ξ {pic.price}</span>
+            <span className="text-lg font-semibold">SEI {pic.price}</span>
             <span className="text-sm text-gray-500">
-              ≈ {/*{convertETHToTrx(pic.price)}*/} TRX
+
             </span>
           </div>
           <div className="flex justify-center pt-2">

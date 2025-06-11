@@ -12,6 +12,7 @@ export default function MintNFTPage({ walletAddress, onBack, onAddMintedPic }) {
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
   const [network, setNetwork] = useState("sepolia");
+  const SEI_CHAIN_ID = "0x530";
 
   const handleFileChange = (e) => {
     const selected = e.target.files[0];
@@ -52,66 +53,46 @@ export default function MintNFTPage({ walletAddress, onBack, onAddMintedPic }) {
       const ipfsUrl = String(`https://gateway.pinata.cloud/ipfs/${ipfsHash}`);
       console.log("Uploaded IPFS URL:", ipfsUrl); // Log the URL
   
-      // 2. Connect to smart contract & Send minting fee
-      /*if (network === "bnbTestnet") {
+    // Ensure user is connected to Sei testnet
+    try {
+      const currentChainId = await window.ethereum.request({ method: "eth_chainId" });
+
+      if (currentChainId !== SEI_CHAIN_ID) {
         try {
           await window.ethereum.request({
             method: "wallet_switchEthereumChain",
-            params: [{ chainId: "0x61" }],
+            params: [{ chainId: SEI_CHAIN_ID }],
           });
         } catch (switchError) {
           if (switchError.code === 4902) {
             await window.ethereum.request({
               method: "wallet_addEthereumChain",
               params: [{
-                chainId: "0x61",
-                chainName: "BNB Smart Chain Testnet",
-                rpcUrls: ["https://data-seed-prebsc-1-s1.binance.org:8545/"],
-                nativeCurrency: {
-                  name: "BNB",
-                  symbol: "tBNB",
-                  decimals: 18,
-                },
-                blockExplorerUrls: ["https://testnet.bscscan.com"],
+                chainId: SEI_CHAIN_ID,
+                chainName: "Sei Testnet",
+                rpcUrls: ["https://evm-rpc-arctic.sei-apis.com"],
+                nativeCurrency: { name: "SEI", symbol: "SEI", decimals: 18 },
+                blockExplorerUrls: ["https://www.seiscan.app/arctic"],
               }],
             });
           } else {
-            throw switchError;
+            toast.error("Failed to switch to Sei Testnet.");
+            return;
           }
         }
-      } else if (network === "sepolia") {*/
-        try {
-          await window.ethereum.request({
-            method: "wallet_switchEthereumChain",
-            params: [{ chainId: "0xaa36a7" }],
-          });
-        } catch (switchError) {
-          if (switchError.code === 4902) {
-            await window.ethereum.request({
-              method: "wallet_addEthereumChain",
-              params: [{
-                chainId: "0xaa36a7",
-                chainName: "Ethereum Sepolia Testnet",
-                rpcUrls: ["https://eth-sepolia.g.alchemy.com/v2/EH0YqqZKDFerFHCBkSo4a15uusnCGdpx"],
-                nativeCurrency: {
-                  name: "Sepolia ETH",
-                  symbol: "ETH",
-                  decimals: 18,
-                },
-                blockExplorerUrls: ["https://sepolia.etherscan.io"],
-              }],
-            });
-          } else {
-            throw switchError;
-          }
-        }
+      }
+    } catch (err) {
+      toast.error("Could not verify Sei network.",err);
+      return;
+    }
+
 
       // Use BrowserProvider instead of Web3Provider
       const provider = new ethers.BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
   
-      const selectedAddress = network === "bnbTestnet" ? config.BNB_CONTRACT_ADDRESS : config.SEPOLIA_CONTRACT_ADDRESS;
-      const contract = new ethers.Contract(selectedAddress, config.ABI, signer);
+      //const selectedAddress = network === "bnbTestnet" ? config.BNB_CONTRACT_ADDRESS : config.SEPOLIA_CONTRACT_ADDRESS;
+      const contract = new ethers.Contract(config.SEI_CONTRACT, config.ABI, signer);
   
       // Explicitly convert ipfsUrl to string here
       const tx1 = await contract.mintNFT(walletAddress, String(ipfsUrl), { gasLimit: 500000 });
@@ -173,7 +154,7 @@ export default function MintNFTPage({ walletAddress, onBack, onAddMintedPic }) {
         className="w-full mb-3 px-4 py-2 border rounded"
         onChange={(e) => setPrice(e.target.value)}
         value={price}
-        placeholder="NFT Price in ETH"
+        placeholder="NFT Price in SEI "
         step="0.00001"
       />
 
@@ -189,13 +170,13 @@ export default function MintNFTPage({ walletAddress, onBack, onAddMintedPic }) {
       )}
 
       {/* Network Selector */}
-      <select 
+      <select
         className="w-full mb-3 px-4 py-2 border rounded"
         value={network}
         onChange={(e) => setNetwork(e.target.value)}
       >
-        <option value="sepolia">Ethereum Sepolia</option>
-        {/*<option value="bnbTestnet">BNB Testnet</option>*/}
+
+        <option value="SEI">SEI Testnet </option>
       </select>
 
     {/* Button Row */}
