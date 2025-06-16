@@ -1,34 +1,31 @@
-import { useEffect, useState } from "react";
+import React from "react";
 
-const DashboardPage = ({ walletAddress }) => {
-  const [myNFTs, setMyNFTs] = useState([]);
-
-  useEffect(() => {
-    if (!walletAddress) return;
-
-    const allPurchases = JSON.parse(localStorage.getItem("purchasedPics")) || {};
-    const userPurchases = allPurchases[walletAddress.toLowerCase()] || [];
-
-    setMyNFTs(userPurchases);
-  }, [walletAddress]);
-
+export default function DashboardPage({ userNFTs }) {
   return (
-    <div>
-      <h2 className="text-2xl font-bold mb-4">Your Purchased NFTs</h2>
-      {myNFTs.length > 0 ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {myNFTs.map((nft, idx) => (
-            <div key={idx} className="border rounded-xl p-2 shadow">
-              <img src={nft.url} alt={nft.name} className="w-full h-auto rounded-md" />
-              <p className="mt-2 text-center">{nft.name || `NFT #${nft.id}`}</p>
+    <div className="container mx-auto px-4 py-8">
+      <h1 className="text-3xl font-bold mb-8">My NFTs</h1>
+      
+      {userNFTs.length === 0 ? (
+        <div className="text-center text-xl font-bold text-gray-600">
+          You haven't purchased any NFTs yet.
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          {userNFTs.map((nft) => (
+            <div key={nft.id} className="border rounded-2xl shadow-lg p-4 space-y-4">
+              <img
+                src={nft.src}
+                alt={nft.name}
+                className="rounded-xl w-full h-48 object-cover"
+              />
+              <div className="text-center font-bold">{nft.name}</div>
+              <div className="flex flex-col items-center space-y-1">
+                <span className="text-sm text-gray-500">Created by: {nft.creator}</span>
+              </div>
             </div>
           ))}
         </div>
-      ) : (
-        <p>You haven’t purchased any NFTs yet.</p>
       )}
     </div>
   );
-};
-
-export default DashboardPage;
+}

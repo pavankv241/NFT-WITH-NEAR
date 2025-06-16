@@ -1,8 +1,6 @@
 import React, { useState } from "react";
-import { ethers } from "ethers";
 import toast from "react-hot-toast";
-import config from "../utils/config.js"
-
+import { useWalletSelector } from "@near-wallet-selector/react-hook";
 
 export default function MintNFTPage({ walletAddress, onBack, onAddMintedPic }) {
   const [file, setFile] = useState(null);
@@ -11,8 +9,7 @@ export default function MintNFTPage({ walletAddress, onBack, onAddMintedPic }) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
-  const [network, setNetwork] = useState("sepolia");
-  const SEI_CHAIN_ID = "0x530";
+  const { signedAccountId, signIn, signOut, selector } = useWalletSelector();
 
   const handleFileChange = (e) => {
     const selected = e.target.files[0];
@@ -21,20 +18,25 @@ export default function MintNFTPage({ walletAddress, onBack, onAddMintedPic }) {
   };
 
   const handleMint = async () => {
-    if (!file || !walletAddress || !price) {
-      toast.success("Please connect your wallet, upload a file, and enter price.");
+    if (!file || !signedAccountId) {
+      toast.error("Please connect your wallet and upload a file.");
       return;
     }
-  
+
     try {
       setMinting(true);
-  
-      // 1. Upload to IPFS manually via fetch
+
+      // 1. Upload to IPFS
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("pinataMetadata", JSON.stringify({ name: name || "Minted NFT" }));
+      formData.append("pinataMetaData", JSON.stringify({
+        name: name || "Minted NFT",
+        description: description,
+        price: price
+      }));
+
       formData.append("pinataOptions", JSON.stringify({ cidVersion: 1 }));
-  
+
       const res = await fetch("https://api.pinata.cloud/pinning/pinFileToIPFS", {
         method: "POST",
         headers: {
@@ -42,84 +44,16 @@ export default function MintNFTPage({ walletAddress, onBack, onAddMintedPic }) {
         },
         body: formData,
       });
-  
+
       if (!res.ok) throw new Error("Upload to IPFS failed");
-  
+
       const result = await res.json();
-      console.log(result);
       const ipfsHash = result.IpfsHash;
-  
-      // Ensure IPFS URL is a string
-      const ipfsUrl = String(`https://gateway.pinata.cloud/ipfs/${ipfsHash}`);
-      console.log("Uploaded IPFS URL:", ipfsUrl); // Log the URL
-  
-    // Ensure user is connected to Sei testnet
-    try {
-      const currentChainId = await window.ethereum.request({ method: "eth_chainId" });
+      const ipfsUrl = `https://gateway.pinata.cloud/ipfs/${ipfsHash}`;
 
-      if (currentChainId !== SEI_CHAIN_ID) {
-        try {
-          await window.ethereum.request({
-            method: "wallet_switchEthereumChain",
-            params: [{ chainId: SEI_CHAIN_ID }],
-          });
-        } catch (switchError) {
-          if (switchError.code === 4902) {
-            await window.ethereum.request({
-              method: "wallet_addEthereumChain",
-              params: [{
-                chainId: SEI_CHAIN_ID,
-                chainName: "Sei Testnet",
-                rpcUrls: ["https://evm-rpc-arctic.sei-apis.com"],
-                nativeCurrency: { name: "SEI", symbol: "SEI", decimals: 18 },
-                blockExplorerUrls: ["https://www.seiscan.app/arctic"],
-              }],
-            });
-          } else {
-            toast.error("Failed to switch to Sei Testnet.");
-            return;
-          }
-        }
-      }
-    } catch (err) {
-      toast.error("Could not verify Sei network.",err);
-      return;
-    }
-
-
-      // Use BrowserProvider instead of Web3Provider
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const signer = await provider.getSigner();
-  
-      //const selectedAddress = network === "bnbTestnet" ? config.BNB_CONTRACT_ADDRESS : config.SEPOLIA_CONTRACT_ADDRESS;
-      const contract = new ethers.Contract(config.SEI_CONTRACT, config.ABI, signer);
-  
-      // Explicitly convert ipfsUrl to string here
-      const tx1 = await contract.mintNFT(walletAddress, String(ipfsUrl), { gasLimit: 500000 });
-      console.log("Minting transaction:", tx1);
-  
-      const receipt = await tx1.wait();
-      console.log("Minting receipt:", receipt);
-  
-      const tx = await signer.sendTransaction({
-        to: import.meta.env.VITE_RECEIVER_WALLET,
-        value: ethers.parseEther("0.0001"),
-      });
-      await tx.wait();
-      console.log("Fee transaction completed:", tx);
-  
-      const nftDetails = {
-        id: Date.now(),
-        name: name || "Minted NFT",
-        description,
-        src: ipfsUrl,
-        price: parseFloat(price),
-        creator: walletAddress
-      };
-  
-      onAddMintedPic(nftDetails);
-  
-      toast.success("NFT minted and fee paid!");
+      // 2. Mint NFT on Near
+      await onAddMintedPic(ipfsUrl, parseFloat(price));
+      toast.success("NFT minted successfully!");
     } catch (err) {
       console.error("Minting error:", err);
       toast.error("Minting failed.");
@@ -127,8 +61,120 @@ export default function MintNFTPage({ walletAddress, onBack, onAddMintedPic }) {
       setMinting(false);
     }
   };
-  
 
+  const handleMintNFT = async (tokenUri, price) => {
+    if (!signedAccountId) {
+        toast.error("Connect your NEAR wallet first");
+        return;
+    }
+
+    try {
+        const wallet = await selector.wallet();
+        console.log('Minting NFT with data:', { tokenUri, accountId: signedAccountId });
+        
+        const result = await wallet.signAndSendTransaction({
+            signerId: signedAccountId,
+            receiverId: "easyapp456.testnet",
+            actions: [{
+                type: "FunctionCall",
+                params: {
+                    methodName: "mint_nft",
+                    args: {
+                        to: signedAccountId,
+                        token_uri: tokenUri
+                    },
+                    gas: "300000000000000",
+                    deposit: "0"
+                }
+            }]
+        });
+        
+        console.log('Minting result:', result);
+
+        if (result?.transaction_outcome?.outcome?.status?.SuccessReceiptId) {
+            toast.success("NFT minted Successfully");
+            
+            // Wait a moment for the blockchain to update
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
+            // Load all NFTs after successful minting
+            await loadAllNFTs(wallet);
+            // Also load user's NFTs
+            await loadUserNFTs(wallet, signedAccountId);
+
+            setShowMintPage(false);
+            setActivePage("gallery");
+        } else {
+            console.error("Minting response:", result);
+            toast.error("Minting Failed - Transaction not successful");
+        }
+        return result;
+    } catch (error) {
+        console.error("Minting failed:", error);
+        toast.error("Failed to mint NFT: " + (error.message || "Unknown error"));
+    }
+};
+
+const loadAllNFTs = async (wallet) => {
+    try {
+        if (!signedAccountId) {
+            throw new Error('Wallet not connected');
+        }
+
+        // Get total number of tokens
+        const counterResult = await wallet.signAndSendTransaction({
+            signerId: signedAccountId, // Use signedAccountId instead of wallet.getAccountId()
+            receiverId: "easyapp456.testnet",
+            actions: [{
+                type: "FunctionCall",
+                params: {
+                    methodName: "get_token_counter",
+                    args: {},
+                    gas: "300000000000000",
+                    deposit: "0"
+                }
+            }]
+        });
+
+        const totalTokens = parseInt(atob(counterResult.transaction_outcome.outcome.status.SuccessValue));
+        
+        // Fetch metadata for each token
+        const nfts = [];
+        for (let i = 0; i < totalTokens; i++) {
+            const metadataResult = await wallet.signAndSendTransaction({
+                signerId: signedAccountId, // Use signedAccountId instead of wallet.getAccountId()
+                receiverId: "easyapp456.testnet",
+                actions: [{
+                    type: "FunctionCall",
+                    params: {
+                        methodName: "get_token_metadata",
+                        args: { token_id: i },
+                        gas: "300000000000000",
+                        deposit: "0"
+                    }
+                }]
+            });
+
+            if (metadataResult?.transaction_outcome?.outcome?.status?.SuccessValue) {
+                const metadata = JSON.parse(atob(metadataResult.transaction_outcome.outcome.status.SuccessValue));
+                const imageUrl = getIPFSGatewayURL(metadata.media);
+                
+                nfts.push({
+                    id: i,
+                    src: imageUrl,
+                    name: metadata.title,
+                    description: metadata.description,
+                    creator: signedAccountId // Use signedAccountId instead of wallet.getAccountId()
+                });
+            }
+        }
+        setAvailablePics(nfts); // Update the state with the fetched NFTs
+        return nfts;
+    } catch (error) {
+        console.error("Failed to load all NFTs:", error);
+        throw error;
+    }
+};
 
   return (
     <div className="max-w-xl mx-auto bg-white shadow-xl p-6 rounded-lg">
@@ -149,14 +195,22 @@ export default function MintNFTPage({ walletAddress, onBack, onAddMintedPic }) {
         className="w-full mb-3 px-4 py-2 border rounded"
       />
 
-      <input
+      <div className="mb-3">
+
+        <label className="block text-sm font-medium text-gray-700 mb-1">Price In Near Token </label>
+
+        <input 
         type="number"
-        className="w-full mb-3 px-4 py-2 border rounded"
-        onChange={(e) => setPrice(e.target.value)}
+        step="0.01"
+        min="0"
+        className="w-full px-4 py-2 border rounded"
+        placeholder="Enter Price In Near Token"
         value={price}
-        placeholder="NFT Price in SEI "
-        step="0.00001"
-      />
+        onChange={(e) => setPrice(e.target.value)}
+        />
+        
+     
+      </div>
 
       <input
         type="file"
@@ -169,34 +223,22 @@ export default function MintNFTPage({ walletAddress, onBack, onAddMintedPic }) {
         <img src={previewUrl} alt="Preview" className="w-full mb-4 rounded" />
       )}
 
-      {/* Network Selector */}
-      <select
-        className="w-full mb-3 px-4 py-2 border rounded"
-        value={network}
-        onChange={(e) => setNetwork(e.target.value)}
-      >
+      <div className="flex justify-between">
+        <button
+          className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 w-1/2 mr-2"
+          onClick={onBack}
+        >
+          Back
+        </button>
 
-        <option value="SEI">SEI Testnet </option>
-      </select>
-
-    {/* Button Row */}
-    <div className="flex justify-between">
-      <button
-        className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 w-1/2 mr-2"
-        onClick={onBack}
-      >
-        Back
-      </button>
-
-      <button
-        className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 w-1/2 ml-2"
-        onClick={handleMint}
-        disabled={minting}
-      >
-        {minting ? "Minting..." : "Mint & Pay"}
-      </button>
-    </div>
-
+        <button
+          className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 w-1/2 ml-2"
+          onClick={handleMint}
+          disabled={minting}
+        >
+          {minting ? "Minting..." : "Mint NFT"}
+        </button>
+      </div>
     </div>
   );
 }
