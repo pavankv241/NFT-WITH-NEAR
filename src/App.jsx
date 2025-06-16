@@ -201,7 +201,7 @@ export default function App() {
         }]
       });
 
-      console.log('Minting result:', result);
+      console.log('Minting result:', result); 
 
       if (result?.transaction_outcome?.outcome?.status?.SuccessReceiptId) {
         toast.success("NFT minted Successfully");
