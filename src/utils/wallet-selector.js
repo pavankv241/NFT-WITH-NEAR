@@ -1,12 +1,19 @@
+import { setupWalletSelector } from "@near-wallet-selector/core";
+import { setupModal } from "@near-wallet-selector/modal-ui";
 import { setupMyNearWallet } from "@near-wallet-selector/my-near-wallet";
-import { setupLedger } from "@near-wallet-selector/ledger";
-import { setupMeteorWallet } from "@near-wallet-selector/meteor-wallet";
 
 export const walletSelectorConfig = {
     network: "testnet",
     modules: [
-        setupMyNearWallet(),
-        setupMeteorWallet(),
-        setupLedger()
+        setupMyNearWallet()
     ],
+};
+
+export const initWalletSelector = async () => {
+    const selector = await setupWalletSelector(walletSelectorConfig);
+    const modal = setupModal(selector, {
+        contractId: "your-contract-id.testnet"
+    });
+    
+    return { selector, modal };
 };

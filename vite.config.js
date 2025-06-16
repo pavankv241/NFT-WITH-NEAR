@@ -2,42 +2,35 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { nodePolyfills } from 'vite-plugin-node-polyfills'
 
-// https://vite.dev/config/
+// https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
     react(),
     nodePolyfills({
-      include: ['buffer', 'crypto', 'stream', 'util', 'process'],
-      globals: {
-        Buffer: true,
-        global: true,
-        process: true,
-      },
-      protocolImports: true,
-    }),
+      include: ['buffer', 'crypto', 'util', 'stream', 'vm']
+    })
   ],
   resolve: {
     alias: {
-      process: 'process/browser',
-      stream: 'stream-browserify',
       util: 'util',
-      buffer: 'buffer',
+      buffer: 'buffer'
     }
   },
-  define: {
-    'process.env': {},
-    global: 'globalThis'
-  },
   optimizeDeps: {
+    include: [
+      '@near-wallet-selector/core',
+      '@near-wallet-selector/modal-ui',
+      '@near-wallet-selector/my-near-wallet',
+      '@near-wallet-selector/react-hook'
+    ],
     esbuildOptions: {
-      define: {
-        global: 'globalThis'
-      }
+      target: 'esnext'
     }
   },
   build: {
-    rollupOptions: {
-      external: ['@near-wallet-selector/core'],
-    },
+    target: 'esnext',
+    commonjsOptions: {
+      transformMixedEsModules: true
+    }
   }
 })

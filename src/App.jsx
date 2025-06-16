@@ -7,8 +7,7 @@ import { Toaster, toast } from "react-hot-toast";
 import MintNFTPage from "./components/MintNFTPage";
 import DashboardPage from "./components/DashboardPage";
 import { useWalletSelector } from "@near-wallet-selector/react-hook";
-import { walletSelectorConfig } from "./utils/wallet-selector";
-import { setupWalletSelector } from "@near-wallet-selector/core";
+import { walletSelectorConfig, initWalletSelector } from "./utils/wallet-selector";
 
 export default function App() {
   const [availablePics, setAvailablePics] = useState([]);
@@ -20,6 +19,7 @@ export default function App() {
   const [activePage, setActivePage] = useState("gallery");
   const [isInitializing, setIsInitializing] = useState(true);
   const [selector, setSelector] = useState(null);
+  const [modal, setModal] = useState(null);
 
   const { signedAccountId, signIn, signOut } = useWalletSelector();
 
@@ -27,8 +27,9 @@ export default function App() {
     const initWallet = async () => {
       try {
         setIsInitializing(true);
-        const walletSelector = await setupWalletSelector(walletSelectorConfig);
+        const { selector: walletSelector, modal: walletModal } = await initWalletSelector();
         setSelector(walletSelector);
+        setModal(walletModal);
 
         if (signedAccountId) {
           setWalletAddress(signedAccountId);
